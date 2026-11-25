@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Luồng tích hợp KIOSK · RA08 theo source hiện tại (newgen-people · newgen-command · iot-core)</title>
+<style>
+:root{
+  --bg:#F3F4F1;--panel:#fff;--fg:#1B2420;--muted:#5E6A65;--line:#C3CCC7;
+  --rest:#0E7C6B;--down:#1F4FD1;--up:#C4352A;--lan:#B25E09;--meta:#7A6FA8;--todo:#B0367A;
+  --zb:#E8EEEB;--zi:#E5EBF1;--zf:#EFECE5;--bus:#26332E;
+  --f:"Segoe UI",system-ui,-apple-system,sans-serif;--m:ui-monospace,Consolas,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 var(--f)}
+.wrap{max-width:1560px;margin:0 auto;padding:24px 20px 60px;display:grid;gap:22px}
+h1{margin:0;font-size:1.55rem}
+h2{margin:0 0 10px;font-size:1.12rem}
+p.lead{margin:6px 0 0;color:var(--muted);max-width:1200px}
+.flows{display:flex;flex-wrap:wrap;gap:8px}
+.flows button{font:inherit;border:1px solid var(--line);background:var(--panel);padding:6px 12px;border-radius:999px;cursor:pointer}
+.flows button.on{background:var(--fg);color:#fff;border-color:var(--fg)}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:18px;align-items:start}
+@media(max-width:1200px){.main{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.scroll{overflow-x:auto}
+svg{display:block;width:100%;height:auto}
+@media(max-width:900px){svg{min-width:900px}}
+#detail{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+.band rect{stroke:none}
+.band text{font:700 12px var(--f);letter-spacing:.08em;fill:var(--muted)}
+.node rect{fill:#fff;stroke:#8C9893;stroke-width:1.2}
+.node.store rect{fill:#E4ECF8}
+.node.dev rect{fill:#FFF7E8;stroke:#B25E09;stroke-width:1.6}
+.node.bus rect{fill:var(--bus);stroke:none}
+.node text.t{font:600 13.5px var(--f);fill:var(--fg)}
+.node text.s{font:11.5px var(--f);fill:var(--muted)}
+.node text.s.todo{fill:var(--todo);font-weight:600}
+.node.bus text.t{fill:#F3F4F1}
+.node.bus text.s{fill:#C9D3CE}
+.edge path{fill:none;stroke-width:1.8}
+.edge text{font:11px var(--m)}
+.edge.rest path{stroke:var(--rest)} .edge.rest text{fill:var(--rest)}
+.edge.down path{stroke:var(--down)} .edge.down text{fill:var(--down)}
+.edge.up path{stroke:var(--up)}     .edge.up text{fill:var(--up)}
+.edge.lan path{stroke:var(--lan);stroke-dasharray:6 4} .edge.lan text{fill:var(--lan)}
+.edge.meta path{stroke:var(--meta);stroke-dasharray:3 3} .edge.meta text{fill:var(--meta)}
+.edge.todo path{stroke:var(--todo);stroke-dasharray:10 5} .edge.todo text{fill:var(--todo)}
+svg.focus .edge:not(.on){opacity:.10}
+svg.focus .node:not(.on){opacity:.30}
+.edge.on path{stroke-width:3.2}
+.badge rect{rx:9}
+.badge text{font:700 11px var(--f);fill:#fff;text-anchor:middle;dominant-baseline:central}
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;color:var(--muted);font-size:12.5px}
+.legend i{display:inline-block;width:26px;height:0;border-top:3px solid;vertical-align:middle;margin-right:6px}
+#d-title{margin:0 0 6px;font-size:1.05rem}
+#d-body ol{margin:6px 0 0;padding-left:22px}
+#d-body li{margin:5px 0}
+.note{margin-top:10px;padding:8px 10px;background:#F6F3EA;border-left:3px solid var(--lan);border-radius:4px;font-size:13px}
+.warn{margin-top:10px;padding:8px 10px;background:#FBEAF2;border-left:3px solid var(--todo);border-radius:4px;font-size:13px}
+code{font:12.5px var(--m);background:#EEF1EF;padding:1px 4px;border-radius:4px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+th{background:#EEF1EF;font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:1100px){.grid2{grid-template-columns:1fr}}
+pre{margin:0;background:#1E2522;color:#E4E9E6;padding:12px;border-radius:8px;overflow:auto;font:12px/1.5 var(--m)}
+.tag{display:inline-block;font:600 11px var(--f);padding:1px 7px;border-radius:999px;color:#fff;white-space:nowrap}
+.t-rest{background:var(--rest)}.t-down{background:var(--down)}.t-up{background:var(--up)}.t-lan{background:var(--lan)}.t-todo{background:var(--todo)}
+.muted{color:var(--muted)}
+.src{font:11.5px var(--m);color:var(--muted)}
+ul.tight{margin:0;padding-left:20px} ul.tight li{margin:4px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Luồng tích hợp KIOSK · RA08 theo source hiện tại</h1>
+    <p class="lead">Vẽ lại từ source mới nhất (fetch ngày 25/11/2026): <code>newgen-people</code> staging <code>ca3453a</code>, <code>newgen-command</code> staging <code>27b8726</code>, <code>iot-command</code> main <code>f42ff58</code>, <code>iot-adapter</code> master <code>8d82545</code>, <code>iot-events</code> master <code>09bb556</code>, <code>iot-registries</code>/<code>iot-registry-w</code> master, <code>iot-shadow-w</code> main.
+    Trong code: <b>KIOSK</b> = device_type <code>BIOMETRIC_COLLECTOR</code> (thu thập sinh trắc), <b>RA08</b> = <code>BIOMETRIC</code> (máy nhận diện), cả hai thuộc namespace <code>people</code> và nói chuyện với iot-core qua <b>EMQX</b> trên topic chung <code>oem/v1/up</code> · <code>oem/v1/down</code>.
+    Chữ <span style="color:var(--todo);font-weight:600">màu hồng</span> là phần <b>chưa có trong code</b>, cần bổ sung. <b>Nguyên tắc:</b> thiết bị không gọi thẳng service backend; dữ liệu đi lên qua iot-core → Kafka Platform để service consume, lệnh đi xuống qua newgen-command → iot-command.</p>
+    <div class="note" style="max-width:1200px"><b>Quyết định:</b> tự viết app trên cả RA08 và KIOSK, giao tiếp với iot-core qua <b>MQTT (EMQX · iot-adapter)</b>. Hai máy đăng ký là <b>thiết bị OEM kết nối trực tiếp</b>: <code>channel_type INTERNAL</code>, không binding gateway (<code>gateway_external_id = null</code>), cùng một <code>vendor</code> ở registry và trong envelope (đề xuất <code>HFSECURITY</code>) → lệnh đi topic <code>iot.command.request.hfsecurity.internal</code>. Không dùng đường platform-to-platform <code>iot-platform-adapter</code> (chỉ hợp khi chạy app HeyStar của hãng).</div>
+  </header>
+
+  <nav class="flows" id="flows">
+    <button data-f="all" class="on">Toàn cảnh</button>
+    <button data-f="dev">0 · Khai báo thiết bị</button>
+    <button data-f="sync">1 · Đẩy nhân viên xuống KIOSK</button>
+    <button data-f="enroll">2 · Thu thập sinh trắc</button>
+    <button data-f="recog">3 · Nhận diện tại RA08</button>
+    <button data-f="remove">4 · Xoá người khỏi KIOSK</button>
+    <button data-f="restore">5 · Nạp lại mẫu vào KIOSK</button>
+    <button data-f="status">6 · Trạng thái thiết bị</button>
+  </nav>
+
+  <section class="main">
+    <div class="card">
+      <div class="scroll">
+        <svg id="d" viewBox="0 0 1260 930" role="img" aria-label="Sơ đồ luồng KIOSK RA08 theo source">
+          <defs>
+            <marker id="m-rest" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#0E7C6B"/></marker>
+            <marker id="m-down" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1F4FD1"/></marker>
+            <marker id="m-up" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#C4352A"/></marker>
+            <marker id="m-lan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#B25E09"/></marker>
+            <marker id="m-meta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#7A6FA8"/></marker>
+            <marker id="m-todo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#B0367A"/></marker>
+          </defs>
+          <g id="bands"></g>
+          <g id="edges"></g>
+          <g id="nodes"></g>
+          <g id="badges"></g>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="border-color:var(--rest)"></i>HTTP giữa các service (JWT Keycloak)</span>
+        <span><i style="border-color:var(--down)"></i>Lệnh đi xuống</span>
+        <span><i style="border-color:var(--up)"></i>Sự kiện · ACK · trạng thái · kết quả đi lên</span>
+        <span><i style="border-color:var(--lan);border-top-style:dashed"></i>LAN RA08 ↔ KIOSK (chưa có trong code)</span>
+        <span><i style="border-color:var(--meta);border-top-style:dotted"></i>Khai báo thiết bị</span>
+        <span style="color:var(--todo)">Chữ hồng: chưa có trong code — cần bổ sung</span>
+      </div>
+    </div>
+
+    <aside class="card" id="detail">
+      <h2 id="d-title">Toàn cảnh</h2>
+      <div id="d-body"></div>
+    </aside>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>App KIOSK (<code>BIOMETRIC_COLLECTOR</code>) phải làm gì</h2>
+      <table>
+        <tr><th>Kênh</th><th>Nội dung</th><th>Trạng thái</th></tr>
+        <tr><td><span class="tag t-down">MQTT sub</span></td><td><code>oem/v1/down</code>, message <code>OEM_COMMAND</code>; lọc theo <code>vendor</code> + <code>device_external_id</code> + <code>endpoint</code> của chính máy (topic dùng chung cho mọi thiết bị), chống trùng theo <code>command_id</code>. Lệnh tới với <code>device_type = KIOSK</code> (alias của adapter).<br>
+          <code>code</code> (capability): <code>USER_CREATE</code> · <code>USER_DELETE</code> · <code>USER_LIST</code> · <code>BIOMETRIC_IMPORT</code> · <code>BIOMETRIC_DELETE</code> · <code>BIOMETRIC_EXPORT</code> · <code>VERIFY_START</code> · <code>OUTPUT_CONTROL</code> · <code>DEVICE_TIME_SET</code> · <code>APP_UPGRADE</code></td><td>Có trong iot-command <span class="src">command_config.json:1570-1860</span></td></tr>
+        <tr><td><span class="tag t-up">MQTT pub</span></td><td><code>oem/v1/up</code> · <code>OEM_COMMAND_ACK</code> {command_id, correlation_id, status ACKED|FAILED, error} trong 120 s</td><td>Có</td></tr>
+        <tr><td><span class="tag t-up">MQTT pub</span></td><td><code>oem/v1/up</code> · <code>OEM_REPORT</code> định kỳ &lt; 60 s (online, thuộc tính trong allow-list)</td><td>Có</td></tr>
+        <tr><td><span class="tag t-up">MQTT pub</span></td><td><code>OEM_TYPED_EVENT</code> <code>biometric.authentication.succeeded|failed.v1</code> khi xác thực ngay tại KIOSK (vd. sau <code>VERIFY_START</code>) → people lưu <code>people_biometric_events</code></td><td>Có</td></tr>
+        <tr><td><span class="tag t-lan">LAN server</span></td><td><code>POST /match</code> nhận đặc trưng từ RA08, so với kho mẫu, trả <code>{matched, personId, score}</code></td><td><b style="color:var(--todo)">Chưa có — bổ sung</b></td></tr>
+        <tr><td><span class="tag t-up">MQTT pub</span></td><td><code>OEM_TYPED_EVENT</code> <code>biometric.enrollment.completed.v1</code> kèm template, đi qua iot-core để newgen-people lưu bản sao (không gọi REST thẳng lên backend)</td><td><b style="color:var(--todo)">Loại sự kiện mới — bổ sung</b> (iot-events chuyển tiếp được; newgen-people chưa xử lý)</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>App RA08 (<code>BIOMETRIC</code>) phải làm gì</h2>
+      <table>
+        <tr><th>Kênh</th><th>Nội dung</th><th>Trạng thái</th></tr>
+        <tr><td><span class="tag t-lan">LAN client</span></td><td><code>POST https://{kiosk}/match</code> {requestId, modality, feature, featureVersion}</td><td><b style="color:var(--todo)">Chưa có — bổ sung</b></td></tr>
+        <tr><td><span class="tag t-up">MQTT pub</span></td><td><code>oem/v1/up</code> · <code>OEM_TYPED_EVENT</code> <code>biometric.authentication.succeeded.v1</code> / <code>.failed.v1</code>, <code>payload_summary</code> {authentication_id, method FACE|FINGERPRINT|PALM, result MATCH|NO_MATCH, subject_id, person_id = <code>person.id</code>}</td><td>Có (contract test fixture 02-01..04)</td></tr>
+        <tr><td><span class="tag t-up">MQTT pub</span></td><td><code>OEM_REPORT</code> &lt; 60 s · <code>OEM_COMMAND_ACK</code></td><td>Có</td></tr>
+        <tr><td><span class="tag t-down">MQTT sub</span></td><td><code>oem/v1/down</code>: các lệnh <code>BIOMETRIC_*</code> (21 lệnh). Liên quan: <code>OUTPUT_CONTROL</code> {type} (relay), <code>DEVICE_TIME_SET</code>, <code>APP_UPGRADE</code>, <code>RECOGNITION_CONFIG_SET</code>. Các lệnh <code>IMPORT_FACE/FINGER/PALM</code> không cần nếu so khớp trên KIOSK.</td><td>Có</td></tr>
+        <tr><td><span class="tag t-down">Relay</span></td><td>Mở relay tại chỗ khi KIOSK trả matched (qua <code>smdt.jar</code>). Backend hiện <b>không</b> tự gửi lệnh mở cửa.</td><td>Quyết định tại thiết bị</td></tr>
+        <tr><td class="muted">REST</td><td colspan="2">Không gọi service backend nào. RA08 chỉ nói chuyện với KIOSK (LAN) và EMQX (MQTT).</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>Payload thật trên MQTT</h2>
+<pre>// RA08 → oem/v1/up  (theo iot-adapter typed-payloads cases.json, fixture 02-01)
+{ "schema_version":1, "message_id":"&lt;uuid&gt;", "message_type":"OEM_TYPED_EVENT",
+  "produced_at":"2026-11-25T07:30:00.100Z", "trace_id":"&lt;trace&gt;",
+  "data":{ "gateway_external_id":null, "vendor":"HFSECURITY",
+    "device_external_id":"PEOPLE-B34-RA08-01", "device_type":"BIOMETRIC", "endpoint":"1",
+    "occurred_at":"2026-11-25T07:30:00.000Z", "payload_schema_version":1,
+    "event_type":"biometric.authentication.succeeded.v1", "severity":"INFO",
+    "payload_summary":{ "authentication_id":"AUTH-…", "method":"FACE", "result":"MATCH",
+      "subject_id":"&lt;person.id&gt;", "person_id":"&lt;person.id&gt;" } } }
+
+// iot-adapter → oem/v1/down  (OemCommandBuilder)
+{ "message_type":"OEM_COMMAND", "data":{ "gateway_external_id":null, "vendor":"HFSECURITY",
+    "device_external_id":"PEOPLE-B34-KD215C-01", "device_type":"KIOSK",   // adapter đổi alias BIOMETRIC_COLLECTOR → KIOSK
+    "endpoint":"1", "command_id":"&lt;uuid&gt;", "correlation_id":"&lt;id&gt;",
+    "code":"USER_CREATE", "value":{ "user_name":"&lt;person.id&gt;", "user_info":"…" },
+    "issued_at":"…", "expires_at":"…(+120 s)" } }
+
+// KIOSK → oem/v1/up
+{ "message_type":"OEM_COMMAND_ACK", "data":{ "gateway_external_id":null, "vendor":"HFSECURITY",
+    "device_external_id":"PEOPLE-B34-KD215C-01", "device_type":"…", "endpoint":"1",
+    "command_id":"&lt;uuid&gt;", "correlation_id":"&lt;id&gt;", "status":"ACKED", "error":null } }</pre>
+      <p class="muted" style="margin:8px 0 0">Envelope bắt buộc: <code>schema_version</code>, <code>message_id</code>, <code>message_type</code>, <code>produced_at</code>, <code>trace_id</code>, <code>data</code>; trường lạ bị từ chối; QoS 1, không retain, ≤ 1 MiB. Định danh người trên thiết bị là <b><code>person.id</code></b> (UUID của newgen-people), không phải mã nhân viên.</p>
+    </div>
+    <div class="card">
+      <h2>Lệch giữa code và thiết kế cần xử lý</h2>
+      <ul class="tight">
+        <li><b>Kết quả lệnh không về newgen-command.</b> iot-command phát <code>newgen.integration.{t}.{ns}.command.result.v1</code>; newgen-command mặc định nghe <code>tnt\..*\.command\.result</code> <span class="src">newgen-command application.yaml:70</span> → lệnh thành TIMEOUT (15 s) nếu không đặt <code>COMMANDS_KAFKA_RESULT_TOPIC_PATTERN</code>.</li>
+        <li><b>Sự kiện của KIOSK bị newgen-people bỏ qua:</b> iot-adapter đổi <code>BIOMETRIC_COLLECTOR</code> → <code>KIOSK</code> trên mọi bản tin đi qua <span class="src">OemDeviceType.java:12-13, BackboneCommandRequests.java:188</span>; iot-events chỉ lấy lại loại từ registry cho HEYSTAR/HikCentral <span class="src">DeviceContextEnricher.java:63</span>; newgen-people chỉ nhận <code>BIOMETRIC_COLLECTOR</code> <span class="src">PeopleEventHandler.java:46,123</span>. Cần sửa một trong ba chỗ (bỏ alias, hoặc iot-events lấy loại từ registry cho mọi thiết bị, hoặc people chấp nhận <code>KIOSK</code>). Lệnh xuống KIOSK cũng mang <code>device_type = KIOSK</code>; ghép ACK vẫn đúng vì hai phía cùng chuẩn hoá.</li>
+        <li><b>Kế hoạch đăng ký staging dùng gateway ESP32</b> cho RA08/KD215C; với app tự viết nối thẳng EMQX cần đăng ký thiết bị trực tiếp (không binding gateway), vendor thống nhất giữa registry và app.</li>
+        <li><b>Enum <code>CommandType</code></b> ở thư viện newgen-common có thể chưa có <code>BIOMETRIC_*</code>/<code>BIOMETRIC_COLLECTOR_*</code> — cần kiểm tra bản hiện tại.</li>
+        <li><b>iot-command:</b> lệnh hết hạn chỉ đổi FAILED trong DB, không phát kết quả; lệnh đã SENT mà thiết bị không trả lời thì ở SENT mãi.</li>
+        <li><b>newgen-people chưa tự đồng bộ:</b> đẩy/xoá người xuống KIOSK chỉ khi người vận hành bấm từng lệnh; không có sync hàng loạt, không lưu mẫu sinh trắc, không có API đăng ký.</li>
+        <li><b>people chỉ ghi nhận, không quyết định mở cửa:</b> chỉ tạo <code>access_event</code> khi RA08 nằm trong danh sách IN/OUT cấu hình (<code>PEOPLE-B34-RA08-01..08</code>) và consumer bật <code>PEOPLE_KAFKA_ENABLED=true</code>.</li>
+        <li><b>Shadow ra platform tắt mặc định</b> (<code>SHADOW_OUTPUT_ENABLED=false</code>); <code>registry.changes</code> mới là đề xuất, chưa có code.</li>
+        <li><b>Bảo mật:</b> <code>application.yaml</code> của iot-command và newgen-command đang chứa host + mật khẩu DB, token service — nên đổi và đưa vào secret.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+const NS="http://www.w3.org/2000/svg";
+const BANDS=[
+  {x:10,y:10,w:1240,h:296,fill:"var(--zb)",label:"BUILDING BACKEND",lx:60,ly:34},
+  {x:10,y:318,w:1240,h:362,fill:"var(--zi)",label:"IOT-CORE",lx:60,ly:342},
+  {x:10,y:692,w:1240,h:228,fill:"var(--zf)",label:"HIỆN TRƯỜNG · LAN toà nhà",lx:60,ly:716}
+];
+const NODES=[
+  {id:"web",x:50,y:50,w:200,h:60,t:"Web quản trị",s:["người vận hành · bấm lệnh"]},
+  {id:"rt",x:50,y:160,w:200,h:56,t:"Centrifugo · Alerts",s:["people:building-{id}"]},
+  {id:"people",x:300,y:50,w:300,h:90,t:"newgen-people  (/people)",s:["person.id = userName / person_id","access_event · people_biometric_events","/device/{id}/biometric-collector/commands"]},
+  {id:"devsvc",x:340,y:170,w:220,h:50,t:"newgen-device",s:["POST /api/v1/devices"]},
+  {id:"ncmd",x:640,y:50,w:220,h:80,t:"newgen-command  (/command)",s:["POST /api/v1/commands (202)","PENDING→DISPATCHED→…"]},
+  {id:"kp",x:900,y:50,w:330,h:170,t:"Kafka Platform",s:["newgen.integration.{t}.people.event.v1","newgen.integration.{t}.people.alarm.v1","newgen.integration.{t}.{ns}.command.result.v1","newgen.integration.{t}.people.state.v1 (tắt)"],c:"bus"},
+  {id:"reg",x:50,y:340,w:250,h:84,t:"iot-registries · iot-registry-w",s:["iot_devices · identities · bindings","EXTERNAL_ID namespace = people","→ Redis EXTERNAL_ID.{ext}"]},
+  {id:"icmd",x:640,y:340,w:220,h:60,t:"iot-command  (/iot-command)",s:["command_config · TTL 120 s"]},
+  {id:"ievt",x:900,y:340,w:330,h:84,t:"iot-events · iot-shadow-w",s:["Redis EXTERNAL_ID.* → tenant · device · group","chuẩn hoá → Kafka Platform","online nếu báo trạng thái trong 60 s"]},
+  {id:"bb",x:300,y:450,w:930,h:40,t:"Kafka Backbone",s:["iot.command.request.{vendor}.internal · iot.command.response · newgen.events.ingest.v1 · newgen.device.state.v1"],c:"bus",row:true},
+  {id:"adp",x:300,y:540,w:280,h:70,t:"iot-adapter",s:["OEM decoder · chưa gắn tenant","ghép ACK theo command_id (120 s)"]},
+  {id:"emqx",x:660,y:540,w:280,h:70,t:"EMQX broker",s:["oem/v1/up · oem/v1/down (topic chung)","QoS 1 · không retain · ≤ 1 MiB"]},
+  {id:"kiosk",x:90,y:760,w:400,h:140,t:"KIOSK · device_type BIOMETRIC_COLLECTOR",s:["PEOPLE-B34-KD215C-01 · namespace people","Thu thập sinh trắc · kho mẫu · so khớp","Lệnh: USER_* · BIOMETRIC_IMPORT/EXPORT/DELETE",{v:"LAN server /match — cần bổ sung",todo:true}],c:"dev"},
+  {id:"ra08",x:790,y:760,w:400,h:140,t:"RA08 · device_type BIOMETRIC",s:["PEOPLE-B34-RA08-01..08 · namespace people","Nhận diện: chụp/quét · liveness · relay","Event: biometric.authentication.*.v1",{v:"LAN client → KIOSK /match — cần bổ sung",todo:true}],c:"dev"}
+];
+const EDGES=[
+  {id:"web_people",a:"web",b:"people",t:"rest",d:"M250 80 L300 80",l:"",s:{dev:"1",sync:"1",remove:"1",restore:"1"}},
+  {id:"people_devsvc",a:"people",b:"devsvc",t:"meta",d:"M450 140 L450 170",l:"",s:{dev:"2"}},
+  {id:"devsvc_reg",a:"devsvc",b:"reg",t:"meta",d:"M450 220 L450 300 L175 300 L175 340",l:"newgen.device.create.request.v1",lx:312,ly:294,anc:"middle",pos:.3,s:{dev:"3"}},
+  {id:"people_rt",a:"people",b:"rt",t:"up",d:"M320 140 L320 188 L250 188",l:"",s:{recog:"11"}},
+  {id:"people_ncmd",a:"people",b:"ncmd",t:"rest",d:"M600 75 L640 75",l:"HTTP",lx:620,ly:68,anc:"middle",s:{sync:"2",remove:"2",restore:"2"}},
+  {id:"ncmd_icmd",a:"ncmd",b:"icmd",t:"down",d:"M750 130 L750 340",l:"POST /iot-command/api/v1/command",lx:742,ly:252,anc:"end",pos:.45,s:{sync:"3",remove:"3",restore:"3"}},
+  {id:"icmd_bb",a:"icmd",b:"bb",t:"down",d:"M750 400 L750 450",l:"request.{vendor}.internal",lx:742,ly:432,anc:"end",s:{sync:"4",remove:"4",restore:"4"}},
+  {id:"bb_icmd",a:"bb",b:"icmd",t:"up",d:"M810 450 L810 400",l:"command.response",lx:818,ly:432,anc:"start",s:{sync:"11",remove:"11",restore:"11"}},
+  {id:"icmd_kp",a:"icmd",b:"kp",t:"up",d:"M860 365 L880 365 L880 200 L900 200",l:"command.result.v1",lx:888,ly:300,anc:"start",pos:.45,s:{sync:"12",remove:"12",restore:"12"}},
+  {id:"kp_ncmd",a:"kp",b:"ncmd",t:"up",d:"M900 110 L860 110",l:"⚠",lx:880,ly:128,anc:"middle",s:{sync:"13",remove:"13",restore:"13"}},
+  {id:"kp_people",a:"kp",b:"people",t:"up",d:"M1065 50 L1065 30 L450 30 L450 50",l:"people.event.v1 · group newgen-people-integration",lx:760,ly:24,anc:"middle",s:{enroll:"7",recog:"10"}},
+  {id:"bb_adp",a:"bb",b:"adp",t:"down",d:"M360 490 L360 540",l:"request",lx:352,ly:520,anc:"end",s:{sync:"5",remove:"5",restore:"5"}},
+  {id:"adp_bb",a:"adp",b:"bb",t:"up",d:"M520 540 L520 490",l:"events.ingest · device.state · command.response",lx:528,ly:520,anc:"start",s:{sync:"10",enroll:"4",recog:"7",remove:"10",restore:"10",status:"3"}},
+  {id:"adp_emqx",a:"adp",b:"emqx",t:"down",d:"M580 560 L660 560",l:"",s:{sync:"6",remove:"6",restore:"6"}},
+  {id:"emqx_adp",a:"emqx",b:"adp",t:"up",d:"M660 595 L580 595",l:"",s:{sync:"9",enroll:"3",recog:"6",remove:"9",restore:"9",status:"2"}},
+  {id:"bb_ievt",a:"bb",b:"ievt",t:"up",d:"M1065 450 L1065 424",l:"",s:{enroll:"5",recog:"8",status:"4"}},
+  {id:"ievt_kp",a:"ievt",b:"kp",t:"up",d:"M1065 340 L1065 220",l:"forward",lx:1073,ly:290,anc:"start",s:{enroll:"6",recog:"9",status:"5"}},
+  {id:"emqx_kiosk",a:"emqx",b:"kiosk",t:"down",d:"M700 610 L700 690 L420 690 L420 760",l:"oem/v1/down · OEM_COMMAND",lx:560,ly:684,anc:"middle",pos:.5,s:{sync:"7",remove:"7",restore:"7"}},
+  {id:"kiosk_emqx",a:"kiosk",b:"emqx",t:"up",d:"M460 760 L460 710 L740 710 L740 610",l:"oem/v1/up · ACK · REPORT · TYPED_EVENT",lx:600,ly:728,anc:"middle",pos:.5,s:{sync:"8",enroll:"2",remove:"8",restore:"8",status:"1"}},
+  {id:"emqx_ra08",a:"emqx",b:"ra08",t:"down",d:"M850 610 L850 760",l:"oem/v1/down",lx:844,ly:676,anc:"end",s:{}},
+  {id:"ra08_emqx",a:"ra08",b:"emqx",t:"up",d:"M900 760 L900 610",l:"oem/v1/up · biometric.authentication.*",lx:906,ly:676,anc:"start",s:{recog:"5",status:"1"}},
+  {id:"ra08_kiosk",a:"ra08",b:"kiosk",t:"lan",d:"M790 805 L490 805",l:"POST /match (cần bổ sung)",lx:640,ly:797,anc:"middle",s:{recog:"2"}},
+  {id:"kiosk_ra08",a:"kiosk",b:"ra08",t:"lan",d:"M490 860 L790 860",l:"{matched, personId, score}",lx:640,ly:878,anc:"middle",s:{recog:"3"}}
+];
+const NODE_STEPS={people:{dev:"4",sync:"14",enroll:"8"},emqx:{dev:"5"},kiosk:{enroll:"1",restore:"·"},ra08:{recog:"1·4"}};
+
+const FLOWS={
+all:{title:"Toàn cảnh",html:
+"<p>Theo source hiện tại:</p><ol>"+
+"<li><b>Lệnh xuống thiết bị</b> chỉ đi một đường: Web → <code>newgen-people</code> → <code>newgen-command</code> <code>POST /command/api/v1/commands</code> → <code>iot-command</code> <code>POST /iot-command/api/v1/command</code> → Kafka <code>iot.command.request.{vendor}.internal</code> → <code>iot-adapter</code> → EMQX <code>oem/v1/down</code>.</li>"+
+"<li><b>Sự kiện, ACK, trạng thái lên</b>: thiết bị → EMQX <code>oem/v1/up</code> → <code>iot-adapter</code> → Kafka Backbone → <code>iot-events</code>/<code>iot-shadow-w</code> (gắn tenant từ Redis) hoặc <code>iot-command</code> (kết quả lệnh) → Kafka Platform <code>newgen.integration.{t}.…</code> → <code>newgen-people</code> / <code>newgen-command</code>.</li>"+
+"<li><b>KIOSK và RA08</b> là hai thiết bị độc lập trong code. Đường so khớp LAN RA08 → KIOSK <b>chưa có</b> (đường cam đứt nét). Sao lưu mẫu lên backend đi bằng sự kiện qua iot-core (luồng 2), phần newgen-people nhận và lưu chưa có.</li></ol>"+
+"<div class='note'><b>Nguyên tắc:</b> thiết bị không gọi thẳng service backend; mọi thứ đi lên qua iot-core rồi Kafka Platform. KIOSK không tự tải danh sách nhân viên: newgen-people đẩy từng người bằng lệnh <code>BIOMETRIC_COLLECTOR_USER_CREATE</code> với <code>userName = person.id</code>.</div>"},
+dev:{title:"0 · Khai báo thiết bị",html:"<ol>"+
+"<li>Web → <code>POST /people/api/v1/device</code> (header <code>Idempotency-Key</code>) với <code>type</code> = <code>BIOMETRIC_COLLECTOR</code> (KIOSK) hoặc <code>BIOMETRIC</code> (RA08), vendor <code>HFSECURITY</code> (đề xuất), <code>channel_type INTERNAL</code>, transport MQTT, identity <code>EXTERNAL_ID</code> namespace <code>people</code>, vị trí toà/tầng, <b>không gửi binding gateway</b> (thiết bị kết nối trực tiếp). Trả 202 + <code>requestId</code>.</li>"+
+"<li>newgen-people → newgen-device <code>POST {DEVICE_BASE_URL}/api/v1/devices</code>.</li>"+
+"<li>Kafka <code>newgen.device.create.request.v1</code> → <code>iot-registry-w</code> ghi <code>iot_devices</code>/<code>iot_device_identities</code>/<code>iot_device_bindings</code> và Redis <code>EXTERNAL_ID.{ext}</code> = <code>tenant.device.people</code>; phát <code>newgen.device.create.registry-result.v1</code> (iot-authz đọc).</li>"+
+"<li>Web theo dõi <code>GET /people/api/v1/device/requests/{requestId}</code>.</li>"+
+"<li>Tạo tài khoản MQTT cho thiết bị trên EMQX (cấu hình EMQX, ngoài code). External id dự kiến: <code>PEOPLE-B34-KD215C-01</code>, <code>PEOPLE-B34-RA08-01..08</code>.</li></ol>"+
+"<div class='note'>RA08 phải có tên trong danh sách IN/OUT của newgen-people (cấu hình <code>application.yaml:125-127</code>) thì sự kiện nhận diện mới thành <code>access_event</code>.</div>"+
+"<div class='warn'>Khác kế hoạch staging hiện tại (<code>newgen-people/docs/people-gateway-staging.vi.md</code>): kế hoạch khai báo RA08 và KD215C là con của gateway <code>PEOPLE-B34-GW-01</code>, vendor <code>ESP32</code>. Với app tự viết kết nối thẳng EMQX phải khai báo thiết bị trực tiếp, vì iot-adapter không hoàn tất lệnh khi ACK có gateway khác với lệnh (<code>iot-adapter/docs/oem-direct-devices.md</code>).</div>"},
+sync:{title:"1 · Đẩy nhân viên xuống KIOSK (USER_CREATE)",html:"<ol>"+
+"<li>Web → <code>POST /people/api/v1/device/{kioskId}/biometric-collector/commands</code> {commandType <code>BIOMETRIC_COLLECTOR_USER_CREATE</code>, payload {<code>userName</code> = <code>person.id</code>, <code>userInfo</code>}}. People kiểm tra person tồn tại.</li>"+
+"<li>newgen-people → <code>POST /command/api/v1/commands</code> {idempotencyKey <code>people:{tenant}:{device}:{action}:{key}</code>, deviceId, commandType, endpoint, payload, sourceService <code>PEOPLE</code>, timeoutSeconds} (JWT của người dùng + <code>X-Tenant-Id</code>).</li>"+
+"<li>newgen-command → <code>POST /iot-command/api/v1/command</code> {commandId, deviceId, commandType, endpoint, payload}; token client credentials realm <code>iot-dev</code> theo tenant. iot-command kiểm tra device type + payload theo <code>command_config.json</code>, đổi sang capability <code>USER_CREATE</code>.</li>"+
+"<li>Kafka <code>iot.command.request.{vendor}.internal</code>, key <code>deviceExternalId</code>, <code>expires_at</code> +120 s; trạng thái SENT.</li>"+
+"<li>iot-adapter consume.</li>"+
+"<li>Publish <code>OEM_COMMAND</code> lên <code>oem/v1/down</code> (QoS 1).</li>"+
+"<li>KIOSK lọc đúng <code>device_external_id</code>, tạo user nội bộ với <code>userName</code>.</li>"+
+"<li>KIOSK publish <code>OEM_COMMAND_ACK</code> {command_id, correlation_id, status ACKED} trên <code>oem/v1/up</code> trong 120 s.</li>"+
+"<li>iot-adapter ghép ACK theo <code>command_id</code>.</li>"+
+"<li>→ Kafka <code>iot.command.response</code> {commandId, success, error}.</li>"+
+"<li>iot-command cập nhật SUCCESS/FAILED.</li>"+
+"<li>→ <code>newgen.integration.{t}.people.command.result.v1</code>.</li>"+
+"<li>newgen-command consume và cập nhật SUCCEEDED. <b>⚠ Pattern mặc định <code>tnt\\..*\\.command\\.result</code> không khớp topic trên</b> → thành TIMEOUT (15 s) nếu không override.</li>"+
+"<li>newgen-people / Web hỏi kết quả bằng <code>GET /command/api/v1/commands/{id}</code> (polling, people không consume topic kết quả).</li></ol>"+
+"<div class='warn'>Hiện chỉ đẩy từng người khi bấm. Cần bổ sung: newgen-people tự gửi <code>USER_CREATE</code> khi tạo/kích hoạt nhân viên và dùng <code>USER_LIST</code> để đối soát định kỳ.</div>"},
+enroll:{title:"2 · Thu thập sinh trắc trên KIOSK",html:"<ol>"+
+"<li>Trên KIOSK: chọn người đã có (<code>userName</code> = <code>person.id</code> từ luồng 1), thu thập mặt / vân tay / tĩnh mạch, kiểm tra trùng, lưu vào kho mẫu.</li>"+
+"<li>KIOSK publish <code>OEM_TYPED_EVENT</code> lên <code>oem/v1/up</code>, <code>event_type</code> <span style='color:var(--todo);font-weight:600'><code>biometric.enrollment.completed.v1</code> (loại mới)</span>, <code>payload_summary</code> {enrollment_id, person_id, modality FACE|FINGERPRINT|PALM, finger_num/hand_type, template (base64), template_format, feature_version}. Mỗi bản tin ≤ 1 MiB.</li>"+
+"<li>EMQX → iot-adapter (envelope OEM, không cần sửa).</li>"+
+"<li>→ Kafka <code>newgen.events.ingest.v1</code>.</li>"+
+"<li>iot-events tra Redis <code>EXTERNAL_ID.*</code> gắn tenant/device/<code>people</code>; loại sự kiện lạ đi nhánh mặc định: bỏ đuôi <code>.v1</code> và chuyển tiếp (không cần sửa).</li>"+
+"<li>→ <code>newgen.integration.{t}.people.event.v1</code> (event_type <code>biometric.enrollment.completed</code>).</li>"+
+"<li>newgen-people consume (group <code>newgen-people-integration</code>).</li>"+
+"<li><span style='color:var(--todo);font-weight:600'>Bổ sung:</span> newgen-people nhận loại sự kiện mới (hiện parser chỉ nhận <code>access.attempt.*</code>, <code>access.passage.*</code>, <code>biometric.authentication.*</code>), lưu bản sao mẫu (mã hoá) theo <code>person.id</code> và cập nhật trạng thái đăng ký từng loại.</li></ol>"+
+"<div class='note'>Thiết bị không gọi thẳng service backend: mọi dữ liệu đi lên đều qua EMQX → iot-adapter → Kafka Backbone → iot-events → Kafka Platform, rồi service nghiệp vụ consume.</div>"+
+"<div class='warn'>Mẫu sinh trắc nhỏ (đặc trưng mặt 256–2048 byte, template vân tay ≤ 1024 byte, tĩnh mạch ~2 KB) nên đi trong event được. <b>Ảnh khuôn mặt gốc</b> (để trích lại khi nâng cấp model) không nên đưa vào Kafka: cần thêm bước lưu S3 trong iot-core và event chỉ mang tham chiếu <code>snapshot {uri, content_type}</code>, giống cách iot-platform-adapter đang làm cho HeyStar. Dữ liệu sinh trắc nằm trên Kafka theo thời gian retention: cần chốt mã hoá payload và thời gian lưu.</div>"},
+recog:{title:"3 · Nhận diện tại RA08",html:"<ol>"+
+"<li>RA08 chụp/quét lượt nhận diện, kiểm tra người thật, tạo đặc trưng (không lưu).</li>"+
+"<li><span style='color:var(--todo);font-weight:600'>Bổ sung:</span> RA08 → KIOSK (LAN, HTTPS/mTLS) <code>POST /match</code> {requestId, modality, feature, featureVersion}.</li>"+
+"<li>KIOSK so với kho mẫu, trả {matched, personId = <code>person.id</code>, score}.</li>"+
+"<li>RA08 mở relay tại chỗ nếu matched. Code hiện tại không có bước backend quyết định mở cửa; newgen-people chỉ ghi nhận.</li>"+
+"<li>RA08 publish <code>OEM_TYPED_EVENT</code> <code>biometric.authentication.succeeded.v1</code> (hoặc <code>.failed.v1</code>) lên <code>oem/v1/up</code>, <code>device_type BIOMETRIC</code>, <code>payload_summary</code> {authentication_id, method, result, subject_id, person_id}.</li>"+
+"<li>EMQX → iot-adapter.</li>"+
+"<li>→ Kafka <code>newgen.events.ingest.v1</code>.</li>"+
+"<li>iot-events tra Redis <code>EXTERNAL_ID.{ext}</code> → gắn tenant, device_id, group_function <code>people</code>; chuẩn hoá event_type thành <code>biometric.authentication.succeeded</code>, subjects PERSON.</li>"+
+"<li>→ <code>newgen.integration.{t}.people.event.v1</code>.</li>"+
+"<li>newgen-people (group <code>newgen-people-integration</code>, cần <code>PEOPLE_KAFKA_ENABLED=true</code>): lưu <code>people_device_events</code>; nếu RA08 nằm trong danh sách IN/OUT và tìm thấy person → ghi <code>access_event</code>.</li>"+
+"<li>Đẩy realtime Centrifugo <code>people:building-{id}</code> (<code>people.access_recorded.v1</code>); gửi Alerts nếu person thuộc nhóm RESTRICTED.</li></ol>"+
+"<div class='note'>Nếu muốn backend quyết định mở cửa: newgen-people phải gửi <code>BIOMETRIC_OUTPUT_CONTROL</code> {type} xuống RA08 theo đường lệnh (chưa có tự động, độ trễ cao hơn).</div>"},
+remove:{title:"4 · Xoá người khỏi KIOSK",html:"<ol>"+
+"<li>Web → <code>POST /people/api/v1/device/{kioskId}/biometric-collector/commands</code> với <code>BIOMETRIC_COLLECTOR_BIOMETRIC_DELETE</code> và/hoặc <code>BIOMETRIC_COLLECTOR_USER_DELETE</code> {userName = person.id}.</li>"+
+"<li>→ newgen-command.</li><li>→ iot-command (capability <code>BIOMETRIC_DELETE</code> / <code>USER_DELETE</code>).</li><li>→ <code>iot.command.request.{vendor}.internal</code>.</li><li>→ iot-adapter.</li><li>→ <code>oem/v1/down</code>.</li>"+
+"<li>KIOSK xoá mẫu và user trong kho.</li>"+
+"<li>KIOSK gửi <code>OEM_COMMAND_ACK</code>.</li><li>→ iot-adapter.</li><li>→ <code>iot.command.response</code>.</li><li>iot-command cập nhật.</li><li>→ <code>…command.result.v1</code>.</li><li>→ newgen-command (⚠ cùng lỗi pattern như luồng 1).</li></ol>"+
+"<div class='warn'>Cần bổ sung: tự gửi lệnh xoá khi nhân viên nghỉ việc hoặc bị khoá trong newgen-people.</div>"},
+restore:{title:"5 · Nạp lại mẫu vào KIOSK (BIOMETRIC_IMPORT)",html:"<ol>"+
+"<li>Web → <code>POST /people/api/v1/device/{kioskId}/biometric-collector/commands</code> với <code>BIOMETRIC_COLLECTOR_BIOMETRIC_IMPORT</code> {userName, userInfo, userFeatState, userFeat[], updateUserFeat[]}, từng người.</li>"+
+"<li>→ newgen-command.</li><li>→ iot-command.</li><li>→ <code>iot.command.request.{vendor}.internal</code>.</li><li>→ iot-adapter.</li><li>→ <code>oem/v1/down</code>.</li>"+
+"<li>KIOSK nạp mẫu vào kho.</li>"+
+"<li>ACK → iot-adapter → <code>iot.command.response</code> → iot-command → <code>…command.result.v1</code> → newgen-command (bước 8–13 như luồng 1).</li></ol>"+
+"<div class='warn'>Nguồn <code>userFeat[]</code> là bản sao mẫu newgen-people lưu từ sự kiện đăng ký ở luồng 2 (phần lưu cần bổ sung). Payload mỗi lệnh ≤ 1 MiB (giới hạn MQTT của iot-adapter).</div>"},
+status:{title:"6 · Trạng thái thiết bị",html:"<ol>"+
+"<li>KIOSK và RA08 publish <code>OEM_REPORT</code> lên <code>oem/v1/up</code> chu kỳ &lt; 60 s (thuộc tính phải nằm trong allow-list của iot-adapter, vd. <code>online</code>).</li>"+
+"<li>EMQX → iot-adapter.</li>"+
+"<li>→ Kafka <code>newgen.device.state.v1</code>.</li>"+
+"<li><code>iot-shadow-w</code> lưu Cassandra; quá 60 s không báo thì đánh offline và phát <code>device.state.offline</code>.</li>"+
+"<li>→ <code>newgen.integration.{t}.people.state.v1</code> — <b>tắt mặc định</b> (<code>SHADOW_OUTPUT_ENABLED=false</code>). Đọc trạng thái qua REST <code>GET /internal/shadows/{deviceId}</code> của iot-shadow.</li></ol>"}
+};
+
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+const svg=document.getElementById("d"),gB=document.getElementById("bands"),gE=document.getElementById("edges"),gN=document.getElementById("nodes"),gBadge=document.getElementById("badges");
+BANDS.forEach(b=>{const g=el("g",{class:"band"},gB);el("rect",{x:b.x,y:b.y,width:b.w,height:b.h,rx:12,fill:b.fill},g);const t=el("text",{x:b.lx,y:b.ly},g);t.textContent=b.label;});
+const nodeEl={};
+NODES.forEach(n=>{
+  const g=el("g",{class:"node "+(n.c||""),"data-id":n.id},gN);
+  el("rect",{x:n.x,y:n.y,width:n.w,height:n.h,rx:8},g);
+  if(n.row){
+    const t=el("text",{class:"t",x:n.x+14,y:n.y+n.h/2+5},g);t.textContent=n.t;
+    const s=el("text",{class:"s",x:n.x+140,y:n.y+n.h/2+4},g);s.textContent=n.s[0];
+  }else{
+    const t=el("text",{class:"t",x:n.x+12,y:n.y+21},g);t.textContent=n.t;
+    n.s.forEach((line,i)=>{const isObj=typeof line==="object";const s=el("text",{class:"s"+(isObj&&line.todo?" todo":""),x:n.x+12,y:n.y+39+i*16},g);s.textContent=isObj?line.v:line;});
+  }
+  nodeEl[n.id]={g:g,n:n};
+});
+const edgeEl=[];
+EDGES.forEach(e=>{
+  const g=el("g",{class:"edge "+e.t},gE);
+  const p=el("path",{d:e.d,"marker-end":"url(#m-"+e.t+")"},g);
+  if(e.l){const a={x:e.lx,y:e.ly,"text-anchor":e.anc||"middle"};if(e.rot)a.transform="rotate("+e.rot+" "+e.lx+" "+e.ly+")";const t=el("text",a,g);t.textContent=e.l;}
+  edgeEl.push({g:g,p:p,e:e});
+});
+const COLOR={rest:"#0E7C6B",down:"#1F4FD1",up:"#C4352A",lan:"#B25E09",meta:"#7A6FA8",todo:"#B0367A"};
+function badge(x,y,txt,color){const g=el("g",{class:"badge"},gBadge);const w=Math.max(20,txt.length*7+10);el("rect",{x:x-w/2,y:y-9,width:w,height:18,fill:color},g);const t=el("text",{x:x,y:y+.5},g);t.textContent=txt;}
+function show(f){
+  document.querySelectorAll("#flows button").forEach(b=>b.classList.toggle("on",b.dataset.f===f));
+  gBadge.innerHTML="";
+  const all=f==="all";svg.classList.toggle("focus",!all);
+  const onNodes=new Set();
+  edgeEl.forEach(o=>{const step=o.e.s&&o.e.s[f];const on=!all&&!!step;o.g.classList.toggle("on",on);
+    if(on){onNodes.add(o.e.a);onNodes.add(o.e.b);const len=o.p.getTotalLength();const pt=o.p.getPointAtLength(len*(o.e.pos||.5));badge(pt.x,pt.y,step,COLOR[o.e.t]);}});
+  for(const id in NODE_STEPS){const st=NODE_STEPS[id][f];if(!all&&st){onNodes.add(id);if(st!=="·"){const n=nodeEl[id].n;badge(n.x+n.w-16,n.y+2,st,"#26332E");}}}
+  for(const id in nodeEl){nodeEl[id].g.classList.toggle("on",all||onNodes.has(id));}
+  document.getElementById("d-title").textContent=FLOWS[f].title;
+  document.getElementById("d-body").innerHTML=FLOWS[f].html;
+}
+document.querySelectorAll("#flows button").forEach(b=>b.addEventListener("click",()=>{history.replaceState(null,"","#"+b.dataset.f);show(b.dataset.f);}));
+const h=location.hash.slice(1);show(FLOWS[h]?h:"all");
+})();
+</script>
+</body>
+</html>
